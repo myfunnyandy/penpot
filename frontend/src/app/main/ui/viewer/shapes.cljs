@@ -20,6 +20,7 @@
    [app.main.ui.shapes.circle :as circle]
    [app.main.ui.shapes.frame :as frame]
    [app.main.ui.shapes.group :as group]
+   [app.main.ui.shapes.svg-raw :as svg-raw]
    [app.main.ui.shapes.image :as image]
    [app.main.ui.shapes.path :as path]
    [app.main.ui.shapes.rect :as rect]
@@ -81,6 +82,10 @@
   [shape-container show-interactions?]
   (generic-wrapper-factory (group/group-shape shape-container) show-interactions?))
 
+(defn svg-raw-wrapper
+  [shape-container show-interactions?]
+  (generic-wrapper-factory (svg-raw/svg-raw-shape shape-container) show-interactions?))
+
 (defn rect-wrapper
   [show-interactions?]
   (generic-wrapper-factory rect/rect-shape show-interactions?))
@@ -133,6 +138,20 @@
                                     :show-interactions? show-interactions?})]
         [:> group-wrapper props]))))
 
+(defn svg-raw-container-factory
+  [objects show-interactions?]
+  (let [shape-container (shape-container-factory objects show-interactions?)
+        svg-raw-wrapper (svg-raw-wrapper shape-container show-interactions?)]
+    (mf/fnc svg-raw-container
+      {::mf/wrap-props false}
+      [props]
+      (let [shape  (unchecked-get props "shape")
+            childs (mapv #(get objects %) (:shapes shape))
+            props  (obj/merge! #js {} props
+                               #js {:childs childs
+                                    :show-interactions? show-interactions?})]
+        [:> svg-raw-wrapper props]))))
+
 (defn shape-container-factory
   [objects show-interactions?]
   (let [path-wrapper   (path-wrapper show-interactions?)
@@ -144,8 +163,11 @@
       {::mf/wrap-props false}
       [props]
       (let [group-container (mf/use-memo
-                              (mf/deps objects)
-                              #(group-container-factory objects show-interactions?))
+                             (mf/deps objects)
+                             #(group-container-factory objects show-interactions?))
+            svg-raw-container (mf/use-memo
+                               (mf/deps objects)
+                               #(svg-raw-container-factory objects show-interactions?))
             shape (unchecked-get props "shape")
             frame (unchecked-get props "frame")]
         (when (and shape (not (:hidden shape)))
@@ -153,15 +175,15 @@
                           (geom/translate-to-frame frame))
                 opts #js {:shape shape}]
             (case (:type shape)
-              :frame  [:g.empty]
-              :text   [:> text-wrapper opts]
-              :rect   [:> rect-wrapper opts]
-              :path   [:> path-wrapper opts]
-              :image  [:> image-wrapper opts]
-              :circle [:> circle-wrapper opts]
-              :group  [:> group-container
-                       {:shape shape
-                        :frame frame}])))))))
+              :frame   [:g.empty]
+              :text    [:> text-wrapper opts]
+              :rect    [:> rect-wrapper opts]
+              :path    [:> path-wrapper opts]
+              :image   [:> image-wrapper opts]
+              :circle  [:> circle-wrapper opts]
+              :group   [:> group-container {:shape shape :frame frame}]
+              :svg-raw [:> svg-raw-container {:shape shape :frame frame}]
+              )))))))
 
 (mf/defc frame-svg
   {::mf/wrap [mf/memo]}
