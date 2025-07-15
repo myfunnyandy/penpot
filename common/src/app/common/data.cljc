@@ -369,7 +369,7 @@
                (assoc object key nil)
 
                (nil? value)
-               (dissoc object key value)
+               (dissoc object key)
 
                :else
                (assoc object key value)))
